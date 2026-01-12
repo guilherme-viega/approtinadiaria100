@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { INITIAL_HABITS, WORKOUT_PLAN, ACHIEVEMENTS } from './constants';
 import { Habit, CompletionRecord, UserStats, ViewState, Achievement } from './types';
 import Dashboard from './components/Dashboard';
@@ -15,6 +15,9 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
   
+  const getTodayStr = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD estável
+  const [today, setToday] = useState(getTodayStr());
+
   const [habits, setHabits] = useState<Habit[]>(() => {
     const saved = localStorage.getItem('levelup_habits');
     return saved ? JSON.parse(saved) : INITIAL_HABITS;
@@ -25,9 +28,31 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : {};
   });
 
+  const calculateStreak = useCallback((history: CompletionRecord) => {
+    let streak = 0;
+    const checkDate = new Date();
+    
+    // Se hoje já tem algo, começamos a contar de hoje. Se não, de ontem.
+    const todayStr = checkDate.toLocaleDateString('sv-SE');
+    if ((history[todayStr] || []).length === 0) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (true) {
+      const dStr = checkDate.toLocaleDateString('sv-SE');
+      if ((history[dStr] || []).length > 0) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, []);
+
   const [stats, setStats] = useState<UserStats>(() => {
     const saved = localStorage.getItem('levelup_stats');
-    return saved ? JSON.parse(saved) : {
+    const initial = saved ? JSON.parse(saved) : {
       xp: 0,
       level: 1,
       streak: 0,
@@ -35,15 +60,32 @@ const App: React.FC = () => {
       name: 'Viajante',
       unlockedAchievements: []
     };
+    return initial;
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  // Efeito para vigiar a meia-noite
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentToday = getTodayStr();
+      if (currentToday !== today) {
+        setToday(currentToday);
+        // Recalcula streak na virada do dia
+        setStats(prev => ({ ...prev, streak: calculateStreak(completions) }));
+      }
+    }, 60000); // Checa a cada minuto
+    return () => clearInterval(interval);
+  }, [today, completions, calculateStreak]);
 
+  // Sincronizar stats e persistência
   useEffect(() => {
     localStorage.setItem('levelup_habits', JSON.stringify(habits));
     localStorage.setItem('levelup_completions', JSON.stringify(completions));
-    localStorage.setItem('levelup_stats', JSON.stringify(stats));
-  }, [habits, completions, stats]);
+    
+    const currentStreak = calculateStreak(completions);
+    const updatedStats = { ...stats, streak: currentStreak };
+    setStats(updatedStats);
+    localStorage.setItem('levelup_stats', JSON.stringify(updatedStats));
+  }, [habits, completions]);
 
   const checkAchievements = (newCompletions: CompletionRecord) => {
     ACHIEVEMENTS.forEach(ach => {
