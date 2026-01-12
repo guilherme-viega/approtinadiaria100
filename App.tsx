@@ -111,6 +111,44 @@ const App: React.FC = () => {
     setHabits([...habits, newHabit]);
   };
 
+  const handleExportData = () => {
+    const data = {
+      habits,
+      completions,
+      stats,
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `levelup-backup-${today}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        if (json.habits && json.completions && json.stats) {
+          if (window.confirm("Isso irá substituir todo o seu progresso atual. Deseja continuar?")) {
+            setHabits(json.habits);
+            setCompletions(json.completions);
+            setStats(json.stats);
+            alert("Dados restaurados com sucesso!");
+          }
+        } else {
+          alert("Arquivo de backup inválido.");
+        }
+      } catch (err) {
+        alert("Erro ao ler o arquivo.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       <Header stats={stats} />
@@ -141,7 +179,9 @@ const App: React.FC = () => {
             <Profile 
               stats={stats} 
               achievements={ACHIEVEMENTS} 
-              onViewHistory={() => setView('history')} 
+              onViewHistory={() => setView('history')}
+              onExport={handleExportData}
+              onImport={handleImportData}
             />
           )}
           {view === 'history' && (

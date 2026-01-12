@@ -1,14 +1,18 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { UserStats, Achievement } from '../types';
 
 interface ProfileProps {
   stats: UserStats;
   achievements: Achievement[];
   onViewHistory: () => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ stats, achievements, onViewHistory }) => {
+const Profile: React.FC<ProfileProps> = ({ stats, achievements, onViewHistory, onExport, onImport }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const getTitle = (level: number) => {
     if (level < 5) return "Novato Errante";
     if (level < 10) return "Desbravador";
@@ -16,8 +20,15 @@ const Profile: React.FC<ProfileProps> = ({ stats, achievements, onViewHistory })
     return "Lenda da Persistência";
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImport(file);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <div className="bg-white p-8 rounded-[48px] shadow-sm border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
         
@@ -63,45 +74,77 @@ const Profile: React.FC<ProfileProps> = ({ stats, achievements, onViewHistory })
         </button>
       </div>
 
-      <div className="px-2">
-        <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center">
-          <span className="mr-2">🎖️</span> Mural de Conquistas
-        </h3>
-        <div className="grid grid-cols-1 gap-4">
-          {achievements.map((ach) => {
-            const isUnlocked = stats.unlockedAchievements.includes(ach.id);
-            return (
-              <div 
-                key={ach.id} 
-                className={`flex items-center p-5 rounded-[32px] border-2 transition-all duration-500 ${
-                  isUnlocked 
-                    ? 'bg-white border-indigo-100 shadow-sm' 
-                    : 'bg-slate-50 border-slate-100 grayscale opacity-40 blur-[0.5px]'
-                }`}
-              >
-                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-4xl mr-5 shadow-inner transition-transform duration-700 ${
-                  isUnlocked ? 'bg-indigo-50 rotate-12' : 'bg-slate-200'
-                }`}>
-                  {ach.icon}
-                </div>
-                <div className="flex-grow">
-                  <h4 className={`font-black text-lg ${isUnlocked ? 'text-slate-800' : 'text-slate-400'}`}>
-                    {ach.title}
-                  </h4>
-                  <p className="text-sm text-slate-500 font-medium leading-snug">{ach.desc}</p>
-                </div>
-                {isUnlocked && (
-                  <div className="ml-2 text-emerald-500">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    </div>
+      <div className="px-2 space-y-6">
+        <div>
+          <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center">
+            <span className="mr-2">🎖️</span> Mural de Conquistas
+          </h3>
+          <div className="grid grid-cols-1 gap-4">
+            {achievements.map((ach) => {
+              const isUnlocked = stats.unlockedAchievements.includes(ach.id);
+              return (
+                <div 
+                  key={ach.id} 
+                  className={`flex items-center p-5 rounded-[32px] border-2 transition-all duration-500 ${
+                    isUnlocked 
+                      ? 'bg-white border-indigo-100 shadow-sm' 
+                      : 'bg-slate-50 border-slate-100 grayscale opacity-40 blur-[0.5px]'
+                  }`}
+                >
+                  <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-4xl mr-5 shadow-inner transition-transform duration-700 ${
+                    isUnlocked ? 'bg-indigo-50 rotate-12' : 'bg-slate-200'
+                  }`}>
+                    {ach.icon}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                  <div className="flex-grow">
+                    <h4 className={`font-black text-lg ${isUnlocked ? 'text-slate-800' : 'text-slate-400'}`}>
+                      {ach.title}
+                    </h4>
+                    <p className="text-sm text-slate-500 font-medium leading-snug">{ach.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-indigo-50 p-6 rounded-[32px] border border-indigo-100">
+          <h3 className="text-sm font-black text-indigo-900 uppercase tracking-widest mb-4 flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Gerenciamento de Dados
+          </h3>
+          <p className="text-xs text-indigo-700/70 mb-6 font-medium">
+            Seus dados são salvos localmente. Use o backup para trocar de aparelho ou garantir sua segurança.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={onExport}
+              className="bg-white text-indigo-600 border-2 border-indigo-200 font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all active:scale-95"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>BACKUP</span>
+            </button>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-white text-slate-600 border-2 border-slate-200 font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 hover:bg-slate-600 hover:text-white hover:border-slate-600 transition-all active:scale-95"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+              <span>RESTAURAR</span>
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".json" 
+              onChange={handleFileChange}
+            />
+          </div>
         </div>
       </div>
     </div>
